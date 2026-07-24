@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../utils/prisma';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateDocNumber } from '../utils/docNumber';
+import { sendSMS } from '../utils/textLk';
 
 export async function getInvoices(req: AuthenticatedRequest, res: Response) {
   try {
@@ -58,6 +59,9 @@ export async function getInvoiceById(req: AuthenticatedRequest, res: Response) {
         },
         recurringInvoice: {
           select: { id: true, title: true },
+        },
+        reminders: {
+          orderBy: { sentAt: 'desc' },
         },
       },
     });
@@ -651,3 +655,77 @@ export async function deleteInvoice(req: AuthenticatedRequest, res: Response) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+export async function sendInvoiceReminder(req: AuthenticatedRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid invoice ID' });
+    }
+
+    const { templateId } = req.body;
+    if (!templateId) {
+      return res.status(400).json({ error: 'Template ID is required' });
+    }
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { client: true }
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    const template = await prisma.smsTemplate.findUnique({
+      where: { id: parseInt(templateId) }
+    });
+
+    if (!template) {
+      return res.status(404).json({ error: 'SMS Template not found' });
+    }
+
+    const contactPerson = invoice.client.contactPerson;
+    const companyName = invoice.client.companyName;
+    const invoiceNumber = invoice.invoiceNumber;
+    const totalAmount = Number(invoice.totalAmount).toFixed(2);
+    const amountPaid = Number(invoice.amountPaid).toFixed(2);
+    const balanceAmount = (Number(invoice.totalAmount) - Number(invoice.amountPaid)).toFixed(2);
+    const dueDate = new Date(invoice.dueDate).toLocaleDateString();
+
+    let message = template.body
+      .replace(/{contactPerson}/g, contactPerson)
+      .replace(/{companyName}/g, companyName)
+      .replace(/{invoiceNumber}/g, invoiceNumber)
+      .replace(/{totalAmount}/g, totalAmount)
+      .replace(/{amountPaid}/g, amountPaid)
+      .replace(/{balanceAmount}/g, balanceAmount)
+      .replace(/{dueDate}/g, dueDate);
+
+    const senderEmail = req.user?.email || 'admin@pos.com';
+
+    // Send SMS
+    const isSent = await sendSMS(invoice.client.phone, message);
+    const status = isSent ? 'sent' : 'failed';
+
+    // Create log record
+    const reminder = await prisma.invoiceReminder.create({
+      data: {
+        invoiceId: id,
+        sentBy: senderEmail,
+        message,
+        status
+      }
+    });
+
+    if (!isSent) {
+      return res.status(500).json({ error: 'Failed to send SMS reminder via provider API', log: reminder });
+    }
+
+    return res.status(201).json(reminder);
+  } catch (error: any) {
+    console.error('Send invoice reminder error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+

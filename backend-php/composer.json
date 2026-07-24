@@ -1,0 +1,19 @@
+{
+  "name": "pos/backend-php",
+  "description": "PHP Backend for POS Business Management System",
+  "require": {
+    "firebase/php-jwt": "^6.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "api/src/"
+    }
+  },
+  "config": {
+    "policy": {
+      "advisories": {
+        "block": false
+      }
+    }
+  }
+}

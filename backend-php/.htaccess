@@ -1,0 +1,13 @@
+RewriteEngine On
+RewriteBase /
+
+# Rewrite API requests to the api/index.php front controller
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# For non-API requests, if the file or directory does not exist, rewrite to index.html
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.html [L]

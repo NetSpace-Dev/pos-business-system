@@ -17,6 +17,7 @@ import deadlineRoutes from './routes/deadlineRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import userRoutes from './routes/userRoutes';
 import financeRoutes from './routes/financeRoutes';
+import smsTemplateRoutes from './routes/smsTemplateRoutes';
 
 // Import cron scheduler
 import { startCronJobs } from './utils/cron';
@@ -51,6 +52,7 @@ app.use('/api/deadlines', deadlineRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/finance', financeRoutes);
+app.use('/api/sms-templates', smsTemplateRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

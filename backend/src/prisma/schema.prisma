@@ -126,6 +126,7 @@ model Invoice {
   items    InvoiceItem[]
   payments Payment[]
   projectDeadlines ProjectDeadline[]
+  reminders InvoiceReminder[]
 
   @@map("invoices")
 }
@@ -455,4 +456,36 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// ============================================
+// SMS TEMPLATES
+// ============================================
+
+model SmsTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sms_templates")
+}
+
+// ============================================
+// INVOICE REMINDERS LOG
+// ============================================
+
+model InvoiceReminder {
+  id         Int      @id @default(autoincrement())
+  invoiceId  Int
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sentBy     String
+  message    String   @db.Text
+  status     String   @default("sent") // sent, failed
+  sentAt     DateTime @default(now())
+
+  @@map("invoice_reminders")
+}
+
+
 
